@@ -1,0 +1,143 @@
+%Document setup
+\documentclass[11pt, a4paper]{article}
+\usepackage[a4paper, top=0.3in, bottom=0.5in, left=0.5in, right=0.5in]{geometry} %Margins
+
+%Tables
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{tablefootnote}
+\usepackage{makecell}
+\usepackage{booktabs}
+
+%Table commands
+\newcolumntype{P}[1]{>{\centering\arraybackslash}m{#1}}
+
+%Graphics
+\usepackage{tikz}  
+\usetikzlibrary{matrix,chains,positioning,decorations.pathreplacing,arrows, arrows.meta,patterns,fadings,fit,backgrounds, intersections, external}
+\tikzexternalize[prefix=figures/]
+\usepackage{graphicx}
+\usepackage{pgfplots}
+\usepackage{callouts}
+\usepackage{neuralnetwork}
+\usepackage{xpatch}
+ 
+%Graphics commands
+\pgfplotsset{compat=newest, scaled x ticks=false}
+\xpatchcmd{\linklayers}{\nn@lastnode}{\lastnode}{}{}%Neural Network options
+\xpatchcmd{\linklayers}{\nn@thisnode}{\thisnode}{}{}%Neural Network options
+\newsavebox{\largestimage}%Box to fix subfigures
+\makeatletter 
+\newenvironment{customlegend}[1][]{ %Adjust legends below bar charts
+    \begingroup
+    \let\addlegendimage=\pgfplots@addlegendimage
+    \let\addlegendentry=\pgfplots@addlegendentry
+    \pgfplots@init@cleared@structures
+    \pgfplotsset{#1}%
+}{
+    \pgfplots@createlegend
+    \endgroup
+}
+\makeatother
+
+%Figure management
+\usepackage{wrapfig}
+\usepackage[export]{adjustbox}
+\usepackage{float} %For the [H] option
+\usepackage{adjustbox}
+
+%Figure management commands
+\restylefloat{table} %For the [H] option
+
+%Caption management
+\usepackage[justification=centering]{caption}
+\usepackage{subcaption}
+
+%Hyperlink management
+\usepackage{color}
+\usepackage[hidelinks]{hyperref}
+
+%Hyperlink management commands
+\hypersetup{
+  colorlinks=false,
+  linktoc=all,
+  linkcolor=black,
+  citecolor=black,
+}
+
+%Miscellaneous non-text related
+\usepackage{filecontents} %To create files and save them and to import them
+\usepackage{pdflscape} %To convert certain pages to landscape mode. Pdf Lscape over lscape to be able to completely make a page landscape in the pdf file within itself.
+
+%Miscellaneous text related
+\usepackage[final]{microtype}
+\usepackage{parskip}
+\usepackage{setspace} %For setting spacing between
+\usepackage[normalem]{ulem} %Underlining
+\usepackage{amsmath, amsfonts, mathtools, amsthm, amssymb, mathtools} %Math stuff
+\usepackage{textcomp} %Not sure what this is for
+\usepackage{ragged2e} %For non-justified text
+\usepackage{gensymb} %Symbols such as celsius
+\usepackage{titlesec} %Section formatting
+\usepackage{enumitem} %Enumerate and itemize
+\usepackage{color} %Highlighting
+\usepackage{titling} %Subtitle to main title of document with extra option below
+\usepackage{standalone} %Include standalone tikz diagrams
+\usepackage{soul}
+
+%Miscellaneous text related commands
+\urlstyle{same}
+\useunder{\uline}{\ul}{} %Underlining
+\edef\svtheparindent{\the\parindent}
+\makeatletter %Stops TOC from appearing twice in the header for fancyhdr
+
+\begin{document}
+  \textbf{\begin{center}
+    \large\textul{ARMv8 Project Interim Checkpoint}
+  \end{center} }
+
+  \begin{center}
+    \textbf{Group 21} - Rikuto Kimura, Kahngjoon Koh, Nehal Jain, Adithya Narayanan Balaji
+  \end{center}
+
+  Upon reaching the first checkpoint, our group has completed the emulator (Part I), and begun work on the assembler (Part II) of the ARMv8 project. We will describe the technical implementation of our emulator, our collaborative strategies, the challenges we faced in the implementation of our solution and areas we seek to improve upon as we move through consequent parts of the project.
+  \vspace{-0.5cm}
+  \section{Emulator}
+  We used global variables for the components of the CPU to make use of the singleton pattern as the emulator does not make sense without a single unique instance of these components. For the memory and register, we created separate files to allow for modularity and unit testing. We also used static keywords to encapsulate the implementation details of memory and registers. That way, accessing the memory and registers can only be done through gettters and setters which have error checks for going out of bounds for defensive programming and handling access between general registers and special registers.
+
+  As for our register structure, we knew that they would have either a 32 bit mode or a 64 bit mode. Using a union meant that we could store a 32 bit number (wn) and 64 bit number (xn) as members, so accessing either wn or xn would access either the first 32 bits or 64 bits of the same number stored without any extra work, thus satisfying the needs of the specification. We then defined a global array of 31 general registers which all cpu execute functions could access any time. We defined special registers like the pstate or the program counter seperately, using another user defined struct.
+
+  When decoding instructions, we made use of unions and their unique property of memory allocation, along with bit fields, to split up the instructions into the required segments needed for decoding the instruction or for executing it. By first storing the number in the union, we could then define structs for all types of instructions. For example, for a data processing immediate instruction, bit 31 was for sf - the variable that decided whether we used 32 bit or 64 bit registers, and bits 30 and 29 were for the "opc", determining which type of arithmetic will be applied to the operands. The struct for this would use bit fields to define 1 bit of the struct for sf, and 2 bits for the "opc", and then repeated this process for the rest of the instruction. Thus, we could access one of the many structs in the union, using the segments along with if statements to determine instruction type, and access a different instruction struct if requried. Doing this allowed us to avoid using strings or bit masks and shifts, alternate implementation methods which could have achieved the same result, but would have created messier, harder to debug code.
+  
+  We decided to split the execute tasks based on instruction type into entirely separate functions. This allowed us to split up the execute parts of the emulator evenly among our 4 team members, and ensure that git merge conflicts would be a rare occurance.
+  \vspace{-0.5cm}
+  \section{Team approach}
+  \subsection{Strategies for coordination}
+  Before starting work on the emulator, we met up as a group and organized numerous meetings in person, on Teams, or through our Whatsapp group chat, prior to and following the release of the spec. We also organized numerous meetings during the process of writing the emulator so that we could keep our group members up to date on the progress of writing our code and ensuring that the code being written was efficient, readable, and passing the corresponding test cases. In our initial meeting, we setup our primary communication channels, discussed our schedules and apt points of meeting in the future and determine our individual strengths. Following the release of the spec, we met to discuss and outline our emulator design, distribute our tasks and setup future meetings based on the availability and schedule of the members of the group. Reflecting on our choices, we see that in hindsight, the regular meetings were crucial as we were able to discover issues in our code. This was key in assisting our group in completing tasks on time, ensuring that our workload was distributed evenly, and if required we could reallocate tasks to different members.
+
+  \subsection{Distribution of tasks}
+  All members of the group contributed to commenting, refactoring, and debugging at the end to ensure that all test cases were passed. The distribution of individual test cases to debug was arbitrary, given that it is not possible to predict what cases would and would not pass in advance, prior to testing. As such, when debugging, members of our group would inform everyone in the group in our regular group calls and would provide a summary of the areas each person was working on. Additionally, we would inform members of our group if test cases other than the ones we were working on were affected by changes we had made, ensuring that no member was unnecessarily working on test cases that have been passed indirectly by the work of another member.
+  
+  Additionally, we allocated individual tasks. Rikuto worked on overall data and skeletal structure of the emulator, did some unit testing and contributed to the instructions for data transfer. Kahngjoon worked on majority of the data transfer instructions and branch instructions, printing out the CPU state. Nehal worked on decoding and splitting the instructions and helped distributing the tasks amongst the group members. Nehal also contributed to some of the data processing immediate instructions and branch instructions with Kahngjoon. Adithya worked on data processing register instructions, writing of the report and helped set up the testsuite as well as modularization of the project. 
+  
+
+  \subsection{Changes and improvements in strategies}
+  As we have not used Git in a large scale team project previously, we all began working on the master branch. However, we quickly observed this lead to numerous issues as all of our group members would have to work on different files or else would risk having conflicts upon merging. We conducted research online on the best practices when using Git and began using branches to allow for efficient and safe parallel development on the files. We also use merge requests as an opportunity to inspect code written by other members, allowing for multiple checks before a file is committed to occur, ensuring a lower risk of incorrect code being committed. These changes were extremely effective in allowing our group to work independently on assigned areas and have directly improved our productivity. We will be ensuring to carry over these changes to Parts 2 through 4.
+  
+  Additionally, when writing code in the beginning, we had loosely followed a style guide and did not prioritize writing comments. This resulted in numerous issues when debugging, as members of our team sometimes struggled to understand someone else's code. This was a point of discontent that we quickly identified and resolved, especially after Dr. Konstantinos posted a file detailing best practices to follow. Following this, debugging became much easier and quicker and allowed for our team to move through the spec much faster, while ensuring our code remained readable and well-designed, following the advice given on styling when writing C code.
+  \vspace{-0.5cm}
+  \section{Challenges}
+  \subsection{Challenges faced in Part 1}
+  The evident largest challenge for us was the utilisation of C. Given that C was a new language, we had to be careful with the way we chose to design the structure of our program and with learning the syntax of the language so that we may be able to implement our solutions to Part 1. This included the differentiation of source and header files, and their integration into our code.
+
+  Additionally, given that the members in our group have not encountered manually handling memory management in the languages they have had experience in previously, we expect this to be a problem as we have begun working on Part 2. We expect this to be the biggest challenge we will encounter in following parts of the project. Additionally, we have begun looking at using tools such as cgdb and valgrind in order to be able to resolve rather "difficult to spot" segmentation fault errors.
+
+
+  \subsection{Expected challenges}
+  We have thought ahead about how to implement the assembler. Using similar methods to read lines of code in the assembly file, we are also planning to reuse our unions and structs with bit fields to construct the machine code instructions in our assembly code.
+
+  Our final challenge will be to maintain our wellbeing and avoid burnout. We are satisfied with our current progress but it will be crucial to make sure we can keep up the same level in the future. We have to be open if we are currently tired and in need of a break, so that we can potentially reallocate a task to a team member who is able to take on the task.
+
+  
+\end{document}

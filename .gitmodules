@@ -1,0 +1,6 @@
+[submodule "test/Unity"]
+	path = test/Unity
+	url = https://github.com/ThrowTheSwitch/Unity.git
+[submodule "armv8_testsuite"]
+	path = armv8_testsuite
+	url = git@gitlab.doc.ic.ac.uk:teaching-fellows/armv8_testsuite.git
